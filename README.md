@@ -1,195 +1,371 @@
 # docx-zh-en-translation
 
-A stable DOCX translation tool for Chinese-to-English workflows with structure preservation as the top priority.
+> 将现有中文 `.docx` 文档翻译为英文，并尽可能保留原有版式与结构。
 
-## Overview
+## ✨ 项目简介
 
-This project translates existing Chinese .docx documents into English while preserving Microsoft Word layout as much as possible. Instead of rebuilding a document from scratch, it edits conservative Office Open XML parts so that paragraphs, tables, headers, footers, comments, footnotes, and endnotes remain usable after translation.
+这是一个面向 **中文 Word 文档转英文** 场景的 DOCX 翻译工具，核心目标不是“重新生成一份新文档”，而是：
 
-It is intended for structured Word documents such as contracts, reports, proposals, manuals, and other files where formatting matters.
+- **基于原始 `.docx` 直接处理**
+- **尽量保留 Word 原有排版与结构**
+- **输出新的英文版文档**
+- **优先保证文档可打开、可用、结构稳定**
 
-## Key Capabilities
+它特别适合以下类型的文档：
 
-- Preserve original .docx structure and generate a separate translated file
-- Translate body text, table content, headers, footers, comments, footnotes, and endnotes
-- Use a conservative strategy for high-risk Office objects
-- Support configurable translation backends
-- Repack and validate output documents after XML updates
-- Use _en.docx as the default output suffix
+- 合同
+- 报告
+- 方案 / 标书
+- 手册
+- 含表格、编号、页眉页脚、批注、脚注的正式 Word 文档
 
-## Repository Layout
+---
 
-    .
-    |-- IEEE02.docx
-    |-- IEEE02_en.docx
-    |-- SKILL.md
-    |-- AGENTS.md
-    |-- README.md
-    |-- evals/
-    |   -- evals.json
-    |-- references/
-    |   -- xml-scope.md
-    -- scripts/
-        -- translate_docx.py
+## 🎯 设计目标
 
-## Requirements
+本项目遵循一个明确原则：
 
-### Runtime
+> **文档结构安全优先于极限翻译覆盖率。**
 
-- Python 3.11 or newer
-- A working translation backend
-- Access to Office helper scripts for unpack, pack, and validate steps
+也就是说，与其冒险修改高风险 Office XML 对象导致 Word 文件损坏，不如只处理那些**可安全翻译、可稳定回写**的文本区域。
 
-### Backend
+因此，这个工具更关注：
 
-The implementation is backend-configurable. In the current codebase, translation can be performed through:
+- 文档能正常打开
+- 表格、段落、页眉页脚等结构尽量不被破坏
+- 英文输出尽量自然、专业
+- 避免因激进改写 XML 导致格式错乱或文件损坏
 
-- a compatible API endpoint configured through environment variables, or
-- a local claude CLI fallback when available
+---
 
-This README intentionally stays generic so the documentation does not need to change every time the backend setup evolves.
+## ✅ 主要能力
 
-## Configuration
+- 保留原始 `.docx` 结构并生成新的英文版文件
+- 翻译正文段落文字
+- 翻译表格中的文本内容
+- 翻译页眉 / 页脚
+- 翻译批注（comments）
+- 翻译脚注 / 尾注
+- 使用保守策略处理 Word Open XML，避免不必要的结构重建
+- 回写后重新打包并校验输出文档
+- 默认输出文件名为：`原文件名_en.docx`
 
-Set backend-related environment variables as needed:
+---
 
-    set LONGCAT_API_BASE=https://your-endpoint
-    set LONGCAT_API_KEY=your_key
-    set LONGCAT_MODEL=your_model_name
+## ⚠️ 当前有意跳过的内容
 
-If the primary API path is unavailable, the script may fall back to a local CLI translator if supported by the environment.
+以下内容**默认不处理**，以降低破坏文档结构的风险：
 
-## Usage
+- 图表（charts）
+- 公式 / 数学对象
+- 图片中的文字
+- 域代码（如 `w:instrText` / 目录 / 域指令）
+- 高风险 drawing payload 文本
+- 其他不属于普通 WordprocessingML 段落文本的复杂对象
 
-### Basic command
+这不是缺陷，而是本项目的刻意设计：
 
-    python scripts/translate_docx.py <input.docx> [output.docx]
+> **宁可少翻一点，也不要把文档搞坏。**
 
-### Examples
+---
 
-    python scripts/translate_docx.py IEEE02.docx
-    python scripts/translate_docx.py IEEE02.docx IEEE02_en.docx
+## 🧱 工作原理
 
-### Output naming
+整体流程如下：
 
-- If no output path is provided, the default output is <original_name>_en.docx
-- The output file is written beside the source document by default
+1. **校验输入文件**
+   - 检查文件是否存在
+   - 检查扩展名是否为 `.docx`
 
-## Processing Flow
+2. **解包 DOCX**
+   - DOCX 本质上是一个 ZIP 包
+   - 工具会调用 Office helper 脚本将其解包为可编辑 XML
 
-### 1. Validate input
+3. **筛选可安全处理的 XML 部分**
+   当前会处理：
+   - `word/document.xml`
+   - `word/styles.xml`
+   - `word/fontTable.xml`
+   - `word/comments.xml`
+   - `word/footnotes.xml`
+   - `word/endnotes.xml`
+   - `word/header*.xml`
+   - `word/footer*.xml`
 
-The script checks that the source file exists and is a valid .docx file.
+4. **提取可见文本**
+   - 只处理安全、可见的文字节点
+   - 跳过删除文本、域代码等高风险内容
 
-### 2. Unpack DOCX
+5. **批量翻译中文内容**
+   - 按段落收集内容
+   - 批量送入翻译后端
 
-Helper scripts unpack the Office document into editable XML parts.
+6. **回写到原始 XML 结构中**
+   - 优先只替换 `<w:t>` 文本节点
+   - 尽量不破坏原有段落 / run / 表格结构
 
-### 3. Select XML parts
+7. **重新打包并校验**
+   - 将修改后的 XML 重新封装为新的 `.docx`
+   - 执行校验流程，降低生成损坏文档的概率
 
-The translator processes conservative text-bearing parts such as:
+---
 
-- word/document.xml
-- word/styles.xml
-- word/fontTable.xml
-- word/comments.xml
-- word/footnotes.xml
-- word/endnotes.xml
-- word/header*.xml
-- word/footer*.xml
+## 🗂 仓库结构
 
-### 4. Extract text
+```text
+.
+├── README.md
+├── CLAUDE.md
+├── SKILL.md
+├── evals/
+│   └── evals.json
+├── references/
+│   └── xml-scope.md
+└── scripts/
+    └── translate_docx.py
+```
 
-Only visible and safe text nodes are collected. High-risk regions are skipped.
+说明：
 
-### 5. Translate
+- `scripts/translate_docx.py`：主脚本，核心逻辑都在这里
+- `references/xml-scope.md`：说明哪些 XML / 内容会处理，哪些会跳过
+- `evals/evals.json`：评估样例与验收预期
+- `SKILL.md`：面向 Claude skill 的说明文档
+- `CLAUDE.md`：面向 Claude Code 的仓库指导文件
 
-Chinese text is batched and translated through the configured backend.
+---
 
-### 6. Write back
+## 🖥 运行要求
 
-Translated text is redistributed back into the original XML text nodes while minimizing structural disruption.
+### Python
 
-### 7. Repack and validate
+- Python **3.11 及以上**
 
-The updated XML is repackaged into a new .docx, then validated to reduce the chance of producing a broken Word file.
+### 翻译后端
 
-## Translation Coverage
+当前实现支持以下两类翻译路径：
 
-### Included
+#### 方案 A：可配置的兼容接口（默认优先）
+脚本通过环境变量读取翻译接口配置，设计上并不绑定某一个固定模型或服务商。只要你的服务能够提供**兼容 Chat Completions 风格**的接口，就可以接入。
 
-- Paragraph text
-- Table cell text
-- Headers and footers
-- Comments
-- Footnotes and endnotes
+当前代码使用以下环境变量：
 
-### Intentionally skipped
+- `LONGCAT_API_BASE`：接口地址
+- `LONGCAT_API_KEY`：访问密钥
+- `LONGCAT_MODEL`：模型名称
 
-- Charts
-- Equations and formulas
-- Text inside images
-- Field codes such as w:instrText
-- Other high-risk drawing or embedded payload text
+虽然变量名目前保留了 `LONGCAT_` 前缀，但它们本质上只是**接口配置入口**，并不意味着你只能使用 LongCat。你完全可以将其指向其他兼容服务或自定义模型。
 
-## Engineering Principles
+#### 方案 B：本地 Claude CLI 回退
+如果接口调用失败，且本机 `claude` 命令可用，脚本会自动尝试回退到本地 Claude CLI。
 
-- Preserve document integrity before chasing maximum extraction coverage
-- Prefer minimal XML mutation over aggressive document reconstruction
-- Keep batching explicit and configurable
-- Centralize helper-script resolution and subprocess handling
-- Use predictable naming and validation steps
+### Office helper 脚本
 
-## Validation
+脚本依赖 Office helper 完成以下步骤：
 
-### Syntax check
+- unpack
+- pack
+- validate
 
-    python -m py_compile scripts/translate_docx.py
+当前代码会尝试在以下位置寻找这些 helper：
 
-### Translation test
+- `scripts` 附近
+- `~/.claude/plugins/cache/anthropic-agent-skills/` 下的 skill 缓存目录
 
-    python scripts/translate_docx.py IEEE02.docx
+---
 
-Expected default output:
+## ⚙️ 配置方式
 
-    IEEE02_en.docx
+根据当前代码实现，可通过环境变量配置翻译接口。
 
-### Manual review checklist
+需要说明的是：
 
-After generation, verify at least the following:
+- 当前脚本读取的是 `LONGCAT_API_BASE / LONGCAT_API_KEY / LONGCAT_MODEL`
+- 这些名称是**当前实现中的变量名**，不是对具体服务商的强绑定
+- 只要你的后端提供兼容接口，就可以复用这组配置项
 
-- The output file opens normally in Word
-- Main Chinese content has been translated into English
-- Tables remain intact
-- Headers, footers, comments, footnotes, and endnotes are preserved
-- Charts and other skipped objects are not damaged
+### Windows CMD
 
-## FAQ
+```bat
+set LONGCAT_API_BASE=https://your-compatible-endpoint
+set LONGCAT_API_KEY=your_api_key
+set LONGCAT_MODEL=your_model_name
+```
 
-### Why does the project not translate every possible object inside a DOCX?
+### PowerShell
 
-Some Office objects are too fragile to edit safely at the XML level. This project intentionally prioritizes document integrity over maximum text extraction.
+```powershell
+$env:LONGCAT_API_BASE="https://your-compatible-endpoint"
+$env:LONGCAT_API_KEY="your_api_key"
+$env:LONGCAT_MODEL="your_model_name"
+```
 
-### Why is the default output name in English?
+例如，你可以把它理解为：
 
-Using _en.docx avoids Windows terminal and tooling issues related to non-ASCII filenames while still making the output purpose clear.
+- `LONGCAT_API_BASE`：你的模型服务地址
+- `LONGCAT_API_KEY`：你的服务访问凭证
+- `LONGCAT_MODEL`：你希望调用的具体模型名
 
-### Can the translation backend change later?
+如果未正确配置接口，但本机安装并可使用 `claude` CLI，脚本会尝试使用 CLI 作为回退路径。
 
-Yes. The implementation supports backend configuration, so the documentation remains stable even if the underlying provider evolves.
+---
 
-## Security Notes
+## 🚀 使用方法
 
-- Do not commit real API keys
-- Do not commit client documents without permission
-- Use controlled environments for sensitive contracts or internal materials
+### 基本命令
 
-## References
+```bash
+python scripts/translate_docx.py <input.docx> [output.docx]
+```
 
-- scripts/translate_docx.py
-- SKILL.md
-- 
-eferences/xml-scope.md
-- vals/evals.json
+### 示例
 
-# docx-zh-en-translation
+```bash
+python scripts/translate_docx.py 中文合同.docx
+python scripts/translate_docx.py 中文项目报告.docx 中文项目报告_en.docx
+```
+
+### 输出命名规则
+
+- 如果**未指定输出路径**，默认输出：`<原文件名>_en.docx`
+- 输出文件默认写到与源文件相同的目录
+
+---
+
+## 🔍 当前覆盖范围
+
+### 已覆盖
+
+- 正文段落文本
+- 表格单元格文本
+- 页眉 / 页脚
+- 批注
+- 脚注 / 尾注
+
+### 明确跳过
+
+- 图表
+- 公式
+- 图片内文字
+- 域代码
+- 复杂绘图承载文本
+
+---
+
+## 🧠 实现特性
+
+### 1. 保守 XML 回写策略
+
+本项目不会重建整份 Word 文档，而是尽量：
+
+- 保持原始 XML 结构
+- 只修改必要的文本节点
+- 尽量保持段落和表格不变
+
+### 2. 批量翻译
+
+脚本会将需要翻译的中文文本按批次发送到后端，而不是逐句单独请求，以提升效率并减少重复开销。
+
+### 3. 按段落处理
+
+处理单位以段落为主，再尽量将英文结果重新分配回原有文本节点中，以减少结构性破坏。
+
+### 4. 兼容性修复
+
+XML 写回后，脚本还会修复必要的 namespace / prefix 信息，以提高 Word 打开兼容性。
+
+---
+
+## 🧪 校验与验证
+
+### 语法检查
+
+```bash
+python -m py_compile scripts/translate_docx.py
+```
+
+### 运行一次真实翻译验证
+
+```bash
+python scripts/translate_docx.py 中文合同.docx
+```
+
+预期默认输出：
+
+```text
+中文合同_en.docx
+```
+
+### 人工检查清单
+
+生成文件后，建议至少检查以下内容：
+
+- [ ] 输出文件能否正常被 Word 打开
+- [ ] 中文正文是否已翻译为英文
+- [ ] 表格是否仍然完整
+- [ ] 页眉 / 页脚是否保留
+- [ ] 批注、脚注、尾注是否保留
+- [ ] 图表、公式等未处理对象是否未被破坏
+- [ ] 整体版式是否基本可接受
+
+---
+
+## 📌 已知限制
+
+- 英文通常比中文更长，可能导致换行、分页变化
+- 高度精细的 run-level 样式不一定能 100% 保真
+- 本项目不做 OCR，因此不会翻译图片中的文字
+- 不处理图表、公式、域代码等高风险对象
+- 当前仓库未提供完整单元测试体系，验证以真实 DOCX 运行和人工检查为主
+
+---
+
+## ❓常见问题
+
+### 为什么不尝试翻译 DOCX 里的所有内容？
+
+因为很多 Office 对象在 XML 层面非常脆弱。盲目修改虽然可能“覆盖更多内容”，但也更容易导致：
+
+- 文档打不开
+- 排版损坏
+- 域结构失效
+- 图表 / 公式 / 复杂对象异常
+
+所以本项目选择更稳妥的策略。
+
+### 为什么默认输出是 `_en.docx`？
+
+这样更简洁、稳定，也更方便在终端、脚本和跨环境处理中使用。
+
+### 以后可以替换翻译后端吗？
+
+可以。当前实现本身就是后端可配置的，只要接口协议兼容即可替换。
+
+---
+
+## 🔐 安全提示
+
+- 不要提交真实 API Key
+- 不要在未经许可的情况下提交客户文档
+- 涉及合同、内部资料、敏感文本时，请在受控环境中运行
+
+---
+
+## 📚 参考文件
+
+- `scripts/translate_docx.py`
+- `references/xml-scope.md`
+- `SKILL.md`
+- `evals/evals.json`
+
+---
+
+## 🏁 总结
+
+这是一个强调 **稳定性、结构保真、可交付性** 的 DOCX 翻译工具。
+
+如果你的目标是：
+
+> **把现有中文 Word 文档翻成英文，同时尽量保留原来的排版、表格、页眉页脚、批注和注释结构**
+
+那么这个项目就是为这个场景设计的。
