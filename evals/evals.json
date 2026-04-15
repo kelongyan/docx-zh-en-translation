@@ -1,0 +1,41 @@
+{
+  "skill_name": "docx-zh-en-translation",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "我桌面上有个中文 Word 合同，要给美国客户发英文版。请直接基于现有 .docx 翻译成英文，尽量保留原来的排版、表格和编号，输出一个新的 _译文.docx。",
+      "expected_output": "生成一个新的英文版 docx，默认文件名以 _译文.docx 结尾；正文、表格和编号中的中文被翻译为英文，原始 Word 结构尽量保留。",
+      "files": [],
+      "expectations": [
+        "The run produces a new .docx output file rather than only returning text in the conversation.",
+        "The output filename defaults to the input stem plus _译文.docx when no explicit output path is provided.",
+        "The translated document keeps its Word structure intact enough to remain openable and suitable for validation instead of being rebuilt from scratch.",
+        "The main body text, table content, or numbering-related visible Chinese text is translated into English rather than left mostly unchanged."
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "帮我处理这份中文报告的 Word 文件：我要一个英文版本，但页眉页脚、批注、脚注这些都别丢，格式也尽量别坏。",
+      "expected_output": "生成英文版 docx，并保留页眉页脚、批注、脚注/尾注等现有结构；输出文件可正常打开且不是重建的新文档。",
+      "files": [],
+      "expectations": [
+        "The run produces an English .docx output file, not just an explanation or extracted text.",
+        "The output preserves header/footer content structures, comments, and footnotes/endnotes instead of dropping them during translation.",
+        "The resulting document remains openable and structurally valid after translation.",
+        "The workflow does not claim to translate unsupported high-risk objects such as charts, formulas, or image text as part of this eval."
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "这个 docx 是中文项目汇报，里面有表格、编号，还有一些图表。请把能安全翻译的正文内容转成英文，保留 Word 排版，图表和公式不要乱动。",
+      "expected_output": "生成英文版 docx；正文、表格单元格和常规段落文本被翻译，图表/公式等高风险对象未被破坏，整体文档结构仍可用。",
+      "files": [],
+      "expectations": [
+        "The run produces a translated .docx file with normal paragraph and table text translated into English.",
+        "The workflow explicitly treats charts and formulas as skipped or untouched content rather than attempting unsafe translation inside them.",
+        "The output preserves the surrounding Word document structure so tables, numbering, and other standard parts remain usable.",
+        "The result is positioned as a conservative translation that prioritizes document integrity over translating every possible embedded object."
+      ]
+    }
+  ]
+}
