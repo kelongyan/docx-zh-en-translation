@@ -145,12 +145,16 @@
 
 当前实现支持以下两类翻译路径：
 
-#### 方案 A：兼容接口（默认优先）
-通过环境变量配置兼容 OpenAI Chat Completions 风格的翻译接口：
+#### 方案 A：可配置的兼容接口（默认优先）
+脚本通过环境变量读取翻译接口配置，设计上并不绑定某一个固定模型或服务商。只要你的服务能够提供**兼容 Chat Completions 风格**的接口，就可以接入。
 
-- `LONGCAT_API_BASE`
-- `LONGCAT_API_KEY`
-- `LONGCAT_MODEL`
+当前代码使用以下环境变量：
+
+- `LONGCAT_API_BASE`：兼容接口地址
+- `LONGCAT_API_KEY`：接口访问密钥
+- `LONGCAT_MODEL`：调用时使用的模型名称
+
+虽然变量名目前保留了 `LONGCAT_` 前缀，但它们本质上只是**当前实现中的配置键名**，并不意味着你只能使用某一个特定服务。你完全可以将其指向其他兼容服务或自定义模型。
 
 #### 方案 B：本地 Claude CLI 回退
 如果接口调用失败，且本机 `claude` 命令可用，脚本会自动尝试回退到本地 Claude CLI。
@@ -172,23 +176,35 @@
 
 ## ⚙️ 配置方式
 
-根据当前代码实现，可通过环境变量配置翻译接口：
+根据当前代码实现，可通过环境变量配置翻译接口。
+
+需要说明的是：
+
+- 当前脚本读取的是 `LONGCAT_API_BASE / LONGCAT_API_KEY / LONGCAT_MODEL`
+- 这些名称是**当前实现中的环境变量名**，不是对具体服务商的强绑定
+- 只要你的后端提供兼容接口，就可以复用这组配置项
 
 ### Windows CMD
 
 ```bat
-set LONGCAT_API_BASE=https://your-endpoint
-set LONGCAT_API_KEY=your_key
+set LONGCAT_API_BASE=https://your-compatible-endpoint
+set LONGCAT_API_KEY=your_api_key
 set LONGCAT_MODEL=your_model_name
 ```
 
 ### PowerShell
 
 ```powershell
-$env:LONGCAT_API_BASE="https://your-endpoint"
-$env:LONGCAT_API_KEY="your_key"
+$env:LONGCAT_API_BASE="https://your-compatible-endpoint"
+$env:LONGCAT_API_KEY="your_api_key"
 $env:LONGCAT_MODEL="your_model_name"
 ```
+
+例如，你可以把它理解为：
+
+- `LONGCAT_API_BASE`：你的兼容接口地址
+- `LONGCAT_API_KEY`：你的接口访问凭证
+- `LONGCAT_MODEL`：你希望调用的模型名称
 
 如果未正确配置接口，但本机安装并可使用 `claude` CLI，脚本会尝试使用 CLI 作为回退路径。
 
@@ -205,8 +221,8 @@ python scripts/translate_docx.py <input.docx> [output.docx]
 ### 示例
 
 ```bash
-python scripts/translate_docx.py IEEE02.docx
-python scripts/translate_docx.py IEEE02.docx IEEE02_en.docx
+python scripts/translate_docx.py 中文合同.docx
+python scripts/translate_docx.py 中文项目报告.docx 中文项目报告_en.docx
 ```
 
 ### 输出命名规则
@@ -271,13 +287,13 @@ python -m py_compile scripts/translate_docx.py
 ### 运行一次真实翻译验证
 
 ```bash
-python scripts/translate_docx.py IEEE02.docx
+python scripts/translate_docx.py 中文合同.docx
 ```
 
 预期默认输出：
 
 ```text
-IEEE02_en.docx
+中文合同_en.docx
 ```
 
 ### 人工检查清单

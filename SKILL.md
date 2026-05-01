@@ -9,7 +9,7 @@ compatibility:
 
 ## Purpose
 
-将现有中文 `.docx` 翻译为英文，并输出新文件 `原文件名_译文.docx`。
+将现有中文 `.docx` 翻译为英文，并输出新文件 `原文件名_en.docx`。
 
 优先目标：
 - 保留原有页面设置、段落结构、表格结构、样式、页眉页脚、批注、脚注/尾注
@@ -45,7 +45,7 @@ compatibility:
 - 输入文件确实是现有 `.docx`
 - 运行环境可用 `python`
 - 至少满足以下其一：
-  - 已设置 `ANTHROPIC_API_KEY`
+  - 已设置兼容接口所需的环境变量（当前实现读取 `LONGCAT_API_BASE`、`LONGCAT_API_KEY`、`LONGCAT_MODEL`）
   - 当前机器上的 Claude Code CLI 已可用，可作为翻译回退路径
 
 如果这些前提不满足，先向用户说明，再继续。
@@ -53,7 +53,7 @@ compatibility:
 ## Output contract
 
 - 输入：一个现有 `.docx`
-- 默认输出：同目录下新文件 `原文档名称_译文.docx`
+- 默认输出：同目录下新文件 `原文档名称_en.docx`
 - 也可显式指定输出路径
 - 第一版覆盖：
   - 正文
@@ -85,7 +85,7 @@ python scripts/translate_docx.py <input.docx> [output.docx]
 ```
 
 脚本会：
-- 自动推断默认输出名为 `*_译文.docx`
+- 自动推断默认输出名为 `*_en.docx`
 - 解包 docx
 - 处理以下 XML：
   - `word/document.xml`
@@ -103,7 +103,7 @@ python scripts/translate_docx.py <input.docx> [output.docx]
 ### 3. Handle failures conservatively
 
 如果脚本失败：
-- 先看是否缺少 `ANTHROPIC_API_KEY` 且 `claude` CLI 也不可用
+- 先看是否缺少兼容接口配置，且 `claude` CLI 也不可用
 - 再看输入是否是有效 `.docx`
 - 再看 `validate` 失败信息和对应 XML part
 - 不要在未定位问题时交付损坏文件
@@ -119,7 +119,7 @@ python scripts/translate_docx.py <input.docx> [output.docx]
 ## Known limitations
 
 当前实现有以下已知限制，使用时应有预期：
-- 优先使用 `ANTHROPIC_API_KEY`；未设置时会回退到本机 `claude` CLI
+- 优先使用已配置的兼容接口；接口不可用时会回退到本机 `claude` CLI
 - 依赖缓存中的 docx office helper 脚本完成 unpack / pack / validate
 - 英文膨胀可能导致换行、分页变化
 - 高度精细的 run-level 样式不一定能完全保真
@@ -128,7 +128,7 @@ python scripts/translate_docx.py <input.docx> [output.docx]
 ## Verification checklist
 
 交付前至少检查：
-- 是否成功生成 `*_译文.docx`
+- 是否成功生成 `*_en.docx`
 - 输出文件是否能正常打开
 - `validate.py` 是否通过
 - 页眉页脚、表格、批注、脚注/尾注是否仍存在

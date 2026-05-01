@@ -327,10 +327,10 @@ def translate_with_api(texts: list[str], target_lang: str = "English") -> list[s
     message = choices[0].get("message", {}) if choices else {}
     response_text = (message.get("content") or "").strip()
     if not response_text:
-        raise RuntimeError("LongCat translation returned empty text")
+        raise RuntimeError("Configured translation API returned empty text")
 
     body = extract_json_object(response_text)
-    return validate_translation_payload(body, len(texts), "LongCat API")
+    return validate_translation_payload(body, len(texts), "Configured translation API")
 
 
 def translate_text(text: str, target_lang: str = "English") -> str:
@@ -430,7 +430,7 @@ def ensure_runtime_requirements(input_file: Path) -> None:
         return
     if shutil.which("claude"):
         return
-    raise RuntimeError("Neither LongCat API access nor Claude CLI is available for translation.")
+    raise RuntimeError("Neither configured translation API access nor Claude CLI is available for translation.")
 
 
 def restore_root_namespace_hints(xml_path: Path) -> None:
