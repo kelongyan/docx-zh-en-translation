@@ -1,0 +1,24 @@
+# Local collaboration / Claude artifacts
+.claude/
+
+# Python cache / bytecode
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Virtual environments
+.venv/
+venv/
+
+# Local environment files
+.env
+.env.*
+
+# IDE files
+.vscode/
+.idea/
+*.iml
+
+# OS junk
+.DS_Store
+Thumbs.db

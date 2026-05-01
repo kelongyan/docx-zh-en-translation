@@ -45,7 +45,7 @@ compatibility:
 - 输入文件确实是现有 `.docx`
 - 运行环境可用 `python`
 - 至少满足以下其一：
-  - 已设置兼容接口所需的环境变量（当前实现读取 `LONGCAT_API_BASE`、`LONGCAT_API_KEY`、`LONGCAT_MODEL`）
+  - 已设置兼容 Chat Completions 风格接口所需的环境变量（文档层面统一记为 `API_BASE`、`API_KEY`、`MODEL`）
   - 当前机器上的 Claude Code CLI 已可用，可作为翻译回退路径
 
 如果这些前提不满足，先向用户说明，再继续。
